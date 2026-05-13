@@ -51,7 +51,7 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if s.startswith("this "):
         return _parse_this(s, today)
 
-    # BEFORE / AFTER (multi-unit support added here)
+    # BEFORE / AFTER (multi-unit support)
     if " before " in s:
         return _parse_multi_before(s)
 
@@ -78,6 +78,20 @@ def parse(s: str, today: Optional[date] = None) -> date:
 
 def _normalize_ordinals(s: str) -> str:
     return re.sub(r"(\d+)(st|nd|rd|th)", r"\1", s)
+
+
+# =========================
+# SPLIT HELPER (NEW)
+# =========================
+
+
+def _split_units(left: str) -> list[str]:
+    """
+    Supports:
+    - '1 year and 2 months'
+    - '2 years, 3 months'
+    """
+    return [c.strip() for c in re.split(r",| and ", left) if c.strip()]
 
 
 # =========================
@@ -135,7 +149,10 @@ def _parse_this(s: str, today: date) -> date:
 
 
 def _weekday_offset(
-    day_name: str, today: date, forward: bool, allow_same: bool = False
+    day_name: str,
+    today: date,
+    forward: bool,
+    allow_same: bool = False,
 ) -> date:
     target = _weekday(day_name)
 
@@ -157,7 +174,7 @@ def _weekday_offset(
 
 
 # =========================
-# BEFORE / AFTER (UPDATED)
+# MULTI BEFORE / AFTER (UPDATED)
 # =========================
 
 
@@ -174,9 +191,7 @@ def _parse_multi_before(s: str) -> date:
 
     years = months = weeks = days = 0
 
-    for chunk in left.split(","):
-        chunk = chunk.strip()
-
+    for chunk in _split_units(left):
         if m := re.fullmatch(r"(\d+) years?", chunk):
             years = int(m.group(1))
         elif m := re.fullmatch(r"(\d+) months?", chunk):
@@ -210,9 +225,7 @@ def _parse_multi_after(s: str) -> date:
 
     years = months = weeks = days = 0
 
-    for chunk in left.split(","):
-        chunk = chunk.strip()
-
+    for chunk in _split_units(left):
         if m := re.fullmatch(r"(\d+) years?", chunk):
             years = int(m.group(1))
         elif m := re.fullmatch(r"(\d+) months?", chunk):
@@ -233,9 +246,13 @@ def _parse_multi_after(s: str) -> date:
     return result
 
 
+# =========================
+# FROM HELPERS
+# =========================
+
+
 def _parse_days_from(s: str) -> date:
     m = re.fullmatch(r"(\d+) days? from (.+)", s)
-
     if not m:
         raise ValueError(s)
 
@@ -248,7 +265,6 @@ def _parse_days_from(s: str) -> date:
 
 def _parse_years_from(s: str) -> date:
     m = re.fullmatch(r"(\d+) years? from (.+)", s)
-
     if not m:
         raise ValueError(s)
 
@@ -352,8 +368,4 @@ def _days_in_month(year: int, month: int) -> int:
         return 31
     if month in (4, 6, 9, 11):
         return 30
-    return (
-        28
-        if (year % 4 != 0 or (year % 100 == 0 and year % 400 != 0)) and month == 2
-        else 29
-    )
+    return 29 if month == 2 else 28
