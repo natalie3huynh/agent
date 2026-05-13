@@ -41,6 +41,7 @@ def parse(s: str, today: Optional[date] = None) -> date:
         return _parse_days_from(s)
 
     parsed = _parse_date(s)
+
     if parsed is not None:
         return parsed
 
@@ -174,12 +175,14 @@ def _parse_date(s: str) -> Optional[date]:
     if m := re.fullmatch(r"(\d{4})/(\d{1,2})/(\d{1,2})", s):
         return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
 
-    # Month name formats
+    # Month-name formats
     # December 1, 2025
     # December 1 2025
     # Dec 1, 2025
     # Dec 1 2025
-    if m := re.fullmatch(r"([a-z]+) (\d+),? (\d{4})", s):
+    # Dec. 1, 2025
+    # Dec. 1 2025
+    if m := re.fullmatch(r"([a-z]+\.?) (\d+),? (\d{4})", s):
         month = _month_to_int(m.group(1))
 
         if month is None:
@@ -194,6 +197,8 @@ def _parse_date(s: str) -> Optional[date]:
 
 
 def _month_to_int(name: str) -> Optional[int]:
+    name = name.rstrip(".")
+
     return {
         "january": 1,
         "jan": 1,
