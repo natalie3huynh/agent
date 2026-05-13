@@ -6,19 +6,18 @@ import re
 
 
 # =========================
-# PUBLIC FUNCTION
+# PUBLIC API
 # =========================
 
 def parse(s: str, today: Optional[date] = None) -> date:
     if today is None:
         today = date.today()
 
-    s = s.strip().lower()
-    s = _normalize_ordinals(s)
+    s = _normalize_ordinals(s.strip().lower())
 
-    # ------------------------
-    # special phrases (must come first)
-    # ------------------------
+    # -------------------------
+    # simple keywords
+    # -------------------------
     if s == "today":
         return today
     if s == "tomorrow":
@@ -26,11 +25,9 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if s == "yesterday":
         return today - timedelta(days=1)
 
-    if s == "the day before yesterday":
-        return today - timedelta(days=2)
-    if s == "the day after tomorrow":
-        return today + timedelta(days=2)
-
+    # -------------------------
+    # special phrases
+    # -------------------------
     if s == "a week ago":
         return today - timedelta(weeks=1)
     if s == "a year from now":
@@ -39,46 +36,44 @@ def parse(s: str, today: Optional[date] = None) -> date:
         return today - timedelta(weeks=2)
     if s == "2 weeks from now":
         return today + timedelta(weeks=2)
+    if s == "the day after tomorrow":
+        return today + timedelta(days=2)
 
-    # ------------------------
-    # compound expressions (NEW KEY FEATURE)
-    # ------------------------
-    if _is_compound(s):
-        return _parse_compound(s, today)
+    # -------------------------
+    # multi-unit BEFORE/AFTER (NEW FIX)
+    # -------------------------
+    if " before " in s:
+        return _parse_multi(s, today, direction=-1)
+    if " after " in s:
+        return _parse_multi(s, today, direction=1)
 
-    # ------------------------
+    # -------------------------
     # relative patterns
-    # ------------------------
+    # -------------------------
     if s.startswith("in "):
         return _parse_in(s, today)
-
     if s.endswith(" ago"):
         return _parse_ago(s, today)
-
     if s.startswith("next "):
         return _parse_next(s, today)
-
     if s.startswith("last "):
         return _parse_last(s, today)
-
     if s.startswith("this "):
         return _parse_this(s, today)
 
-    # ------------------------
-    # before / after
-    # ------------------------
-    if " before " in s:
-        return _parse_before(s)
+    # -------------------------
+    # single-unit before/after (kept for compatibility)
+    # -------------------------
+    if "days before" in s:
+        return _parse_days_before(s)
+    if "days after" in s:
+        return _parse_days_after(s)
+    if "days from" in s:
+        return _parse_days_from(s)
 
-    if " after " in s:
-        return _parse_after(s)
-
-    if " from " in s:
-        return _parse_from(s)
-
-    # ------------------------
-    # absolute date
-    # ------------------------
+    # -------------------------
+    # absolute
+    # -------------------------
     parsed = _parse_date(s)
     if parsed is not None:
         return parsed
@@ -87,83 +82,29 @@ def parse(s: str, today: Optional[date] = None) -> date:
 
 
 # =========================
-# NORMALIZATION
+# MULTI-UNIT PARSING (FIX)
 # =========================
 
-def _normalize_ordinals(s: str) -> str:
-    return re.sub(r"(\d+)(st|nd|rd|th)", r"\1", s)
-
-
-# =========================
-# COMPOUND EXPRESSIONS
-# =========================
-
-def _is_compound(s: str) -> bool:
-    return (" and " in s) or ("," in s)
-
-
-def _parse_compound(s: str, today: date) -> date:
+def _parse_multi(s: str, today: date, direction: int) -> date:
     """
     Handles:
-    - 1 year and 2 months after yesterday
-    - 2 years, 3 months before Dec. 1, 2025
+    - "2 years, 3 months before Dec. 1, 2025"
+    - "1 year and 2 months after yesterday"
     """
-
     if " before " in s:
-        base_str = s.split(" before ", 1)[1]
-        base = _parse_date(base_str)
-        if base is None:
-            raise ValueError(s)
-
-        parts = re.split(r",| and ", s.split(" before ")[0])
-        return _apply_units(base, parts, subtract=True)
+        left, base_str = s.split(" before ", 1)
+        base = _resolve_base(base_str, today)
+        return _apply_multi(left, base, -1)
 
     if " after " in s:
-        base_str = s.split(" after ", 1)[1]
-        base = _parse_date(base_str) or _parse_relative_base(base_str, today)
-        if base is None:
-            raise ValueError(s)
+        left, base_str = s.split(" after ", 1)
+        base = _resolve_base(base_str, today)
+        return _apply_multi(left, base, 1)
 
-        parts = re.split(r",| and ", s.split(" after ")[0])
-        return _apply_units(base, parts, subtract=False)
-
-    raise ValueError(s)
+    raise ValueError(f"Cannot parse: {s}")
 
 
-def _apply_units(base: date, parts: list[str], subtract: bool) -> date:
-    result = base
-
-    for p in parts:
-        p = p.strip()
-        if not p:
-            continue
-
-        if m := re.fullmatch(r"(\d+)\s+days?", p):
-            delta = timedelta(days=int(m.group(1)))
-
-        elif m := re.fullmatch(r"(\d+)\s+weeks?", p):
-            delta = timedelta(weeks=int(m.group(1)))
-
-        elif m := re.fullmatch(r"(\d+)\s+months?", p):
-            result = _add_months(result, -int(m.group(1)) if subtract else int(m.group(1)))
-            continue
-
-        elif m := re.fullmatch(r"(\d+)\s+years?", p):
-            result = _add_years(result, -int(m.group(1)) if subtract else int(m.group(1)))
-            continue
-
-        else:
-            raise ValueError(p)
-
-        if subtract:
-            result -= delta
-        else:
-            result += delta
-
-    return result
-
-
-def _parse_relative_base(s: str, today: date) -> date | None:
+def _resolve_base(s: str, today: date) -> date:
     s = s.strip()
 
     if s == "today":
@@ -173,11 +114,41 @@ def _parse_relative_base(s: str, today: date) -> date | None:
     if s == "tomorrow":
         return today + timedelta(days=1)
 
-    return _parse_date(s)
+    parsed = _parse_date(s)
+    if parsed is not None:
+        return parsed
+
+    raise ValueError(f"Cannot parse base: {s}")
+
+
+def _apply_multi(expr: str, base: date, sign: int) -> date:
+    """
+    Parses:
+    "2 years, 3 months"
+    "1 year and 2 months"
+    """
+    parts = re.split(r",|and", expr)
+    parts = [p.strip() for p in parts if p.strip()]
+
+    result = base
+
+    for p in parts:
+        if m := re.fullmatch(r"(\d+) days?", p):
+            result = result + timedelta(days=sign * int(m.group(1)))
+        elif m := re.fullmatch(r"(\d+) weeks?", p):
+            result = result + timedelta(weeks=sign * int(m.group(1)))
+        elif m := re.fullmatch(r"(\d+) months?", p):
+            result = _add_months(result, sign * int(m.group(1)))
+        elif m := re.fullmatch(r"(\d+) years?", p):
+            result = _add_years(result, sign * int(m.group(1)))
+        else:
+            raise ValueError(f"Invalid multi-unit: {p}")
+
+    return result
 
 
 # =========================
-# IN / AGO
+# RELATIVE
 # =========================
 
 def _parse_in(s: str, today: date) -> date:
@@ -189,7 +160,6 @@ def _parse_in(s: str, today: date) -> date:
         return _add_months(today, int(m.group(1)))
     if m := re.fullmatch(r"in (\d+) years?", s):
         return _add_years(today, int(m.group(1)))
-
     raise ValueError(s)
 
 
@@ -202,42 +172,41 @@ def _parse_ago(s: str, today: date) -> date:
         return _add_months(today, -int(m.group(1)))
     if m := re.fullmatch(r"(\d+) years? ago", s):
         return _add_years(today, -int(m.group(1)))
-
     raise ValueError(s)
 
 
 # =========================
-# BEFORE / AFTER / FROM
+# WEEKDAY LOGIC
 # =========================
 
-def _parse_before(s: str) -> date:
-    m = re.fullmatch(r"(\d+)\s+days?\s+before\s+(.+)", s)
-    if not m:
-        raise ValueError(s)
-    base = _parse_date(m.group(2))
-    if base is None:
-        raise ValueError(s)
-    return base - timedelta(days=int(m.group(1)))
+def _parse_next(s: str, today: date) -> date:
+    return _weekday_offset(s[5:], today, True)
 
 
-def _parse_after(s: str) -> date:
-    m = re.fullmatch(r"(\d+)\s+days?\s+after\s+(.+)", s)
-    if not m:
-        raise ValueError(s)
-    base = _parse_date(m.group(2))
-    if base is None:
-        raise ValueError(s)
-    return base + timedelta(days=int(m.group(1)))
+def _parse_last(s: str, today: date) -> date:
+    return _weekday_offset(s[5:], today, False)
 
 
-def _parse_from(s: str) -> date:
-    m = re.fullmatch(r"(\d+)\s+days?\s+from\s+(.+)", s)
-    if not m:
-        raise ValueError(s)
-    base = _parse_date(m.group(2))
-    if base is None:
-        raise ValueError(s)
-    return base + timedelta(days=int(m.group(1)))
+def _parse_this(s: str, today: date) -> date:
+    return _weekday_offset(s[5:], today, True, allow_same=True)
+
+
+def _weekday_offset(day: str, today: date, forward: bool, allow_same: bool = False) -> date:
+    target = _weekday(day)
+    if target is None:
+        raise ValueError(f"Unknown weekday: {day}")
+
+    diff = target - today.weekday()
+
+    if forward:
+        if diff < 0 or (diff == 0 and not allow_same):
+            diff += 7
+        return today + timedelta(days=diff)
+
+    diff = today.weekday() - target
+    if diff <= 0:
+        diff += 7
+    return today - timedelta(days=diff)
 
 
 # =========================
@@ -256,7 +225,7 @@ def _parse_date(s: str) -> Optional[date]:
     if m := re.fullmatch(r"(\d{4})/(\d{1,2})/(\d{1,2})", s):
         return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
 
-    if m := re.fullmatch(r"([a-z]+\.?) (\d+), (\d{4})", s):
+    if m := re.fullmatch(r"([a-z]+\.?) (\d+),? (\d{4})", s):
         month = _month_to_int(m.group(1))
         if month is None:
             return None
@@ -268,6 +237,10 @@ def _parse_date(s: str) -> Optional[date]:
 # =========================
 # HELPERS
 # =========================
+
+def _normalize_ordinals(s: str) -> str:
+    return re.sub(r"(\d+)(st|nd|rd|th)", r"\1", s)
+
 
 def _month_to_int(name: str) -> Optional[int]:
     name = name.rstrip(".")
@@ -284,6 +257,18 @@ def _month_to_int(name: str) -> Optional[int]:
         "oct": 10, "october": 10,
         "nov": 11, "november": 11,
         "dec": 12, "december": 12,
+    }.get(name)
+
+
+def _weekday(name: str) -> Optional[int]:
+    return {
+        "monday": 0,
+        "tuesday": 1,
+        "wednesday": 2,
+        "thursday": 3,
+        "friday": 4,
+        "saturday": 5,
+        "sunday": 6,
     }.get(name)
 
 
