@@ -29,10 +29,23 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if s == "yesterday":
         return today - timedelta(days=1)
 
+    # special natural phrases
+    if s == "a week ago":
+        return today - timedelta(weeks=1)
+
+    if s == "two weeks ago":
+        return today - timedelta(weeks=2)
+
+    if s == "2 weeks from now":
+        return today + timedelta(weeks=2)
+
+    if s == "a year from now":
+        return _add_years(today, 1)
+
     # -----------------------
     # relative patterns
     # -----------------------
-    if s.startswith("in ") or s.endswith(" from now"):
+    if s.startswith("in "):
         return _parse_in(s, today)
 
     if s.endswith(" ago"):
@@ -87,25 +100,10 @@ def _normalize_ordinals(s: str) -> str:
 
 
 def _parse_in(s: str, today: date) -> date:
-    if s == "in a day":
-        return today + timedelta(days=1)
-
-    if s == "in a week":
-        return today + timedelta(weeks=1)
-
-    if s == "in a month":
-        return _add_months(today, 1)
-
-    if s == "in a year":
-        return _add_years(today, 1)
-
     if m := re.fullmatch(r"in (\d+) days?", s):
         return today + timedelta(days=int(m.group(1)))
 
     if m := re.fullmatch(r"in (\d+) weeks?", s):
-        return today + timedelta(weeks=int(m.group(1)))
-
-    if m := re.fullmatch(r"(\d+) weeks? from now", s):
         return today + timedelta(weeks=int(m.group(1)))
 
     if m := re.fullmatch(r"in (\d+) months?", s):
@@ -118,21 +116,6 @@ def _parse_in(s: str, today: date) -> date:
 
 
 def _parse_ago(s: str, today: date) -> date:
-    if s == "a day ago":
-        return today - timedelta(days=1)
-
-    if s == "a week ago":
-        return today - timedelta(weeks=1)
-
-    if s == "a month ago":
-        return _add_months(today, -1)
-
-    if s == "a year ago":
-        return _add_years(today, -1)
-
-    if s == "two weeks ago":
-        return today - timedelta(weeks=2)
-
     if m := re.fullmatch(r"(\d+) days? ago", s):
         return today - timedelta(days=int(m.group(1)))
 
@@ -263,44 +246,24 @@ def _parse_date(s: str) -> Optional[date]:
 
     # YYYY-MM-DD
     if m := re.fullmatch(r"(\d{4})-(\d{1,2})-(\d{1,2})", s):
-        return date(
-            int(m.group(1)),
-            int(m.group(2)),
-            int(m.group(3)),
-        )
+        return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
 
     # MM/DD/YYYY
     if m := re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", s):
-        return date(
-            int(m.group(3)),
-            int(m.group(1)),
-            int(m.group(2)),
-        )
+        return date(int(m.group(3)), int(m.group(1)), int(m.group(2)))
 
     # YYYY/MM/DD
     if m := re.fullmatch(r"(\d{4})/(\d{1,2})/(\d{1,2})", s):
-        return date(
-            int(m.group(1)),
-            int(m.group(2)),
-            int(m.group(3)),
-        )
+        return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
 
     # Month formats
-    # Supports:
-    # Dec 1 2025
-    # Dec. 1, 2025
-    # December 1st, 2025
-    if m := re.fullmatch(r"([a-z]+)\.? (\d+),? (\d{4})", s):
+    if m := re.fullmatch(r"([a-z]+\.?) (\d+),? (\d{4})", s):
         month = _month_to_int(m.group(1))
 
         if month is None:
             return None
 
-        return date(
-            int(m.group(3)),
-            month,
-            int(m.group(2)),
-        )
+        return date(int(m.group(3)), month, int(m.group(2)))
 
     return None
 
