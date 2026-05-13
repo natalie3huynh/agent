@@ -1,6 +1,6 @@
 from datetime import date, timedelta
-import re
 from typing import Optional
+import re
 
 
 def parse(s: str, today: Optional[date] = None) -> date:
