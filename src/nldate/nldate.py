@@ -29,7 +29,7 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if s == "yesterday":
         return today - timedelta(days=1)
 
-    # special natural phrases
+    # natural phrases
     if s == "a week ago":
         return today - timedelta(weeks=1)
 
@@ -75,10 +75,17 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if " years from " in s or " year from " in s:
         return _parse_years_from(s)
 
+    if " weeks after " in s or " week after " in s:
+        return _parse_weeks_after(s)
+
+    if " weeks before " in s or " week before " in s:
+        return _parse_weeks_before(s)
+
     # -----------------------
     # absolute date formats
     # -----------------------
     parsed = _parse_date(s)
+
     if parsed is not None:
         return parsed
 
@@ -176,7 +183,7 @@ def _weekday_offset(
 
 
 # =========================
-# BEFORE / FROM
+# BEFORE / AFTER
 # =========================
 
 
@@ -234,6 +241,34 @@ def _parse_years_from(s: str) -> date:
         raise ValueError(s)
 
     return _add_years(base, int(m.group(1)))
+
+
+def _parse_weeks_after(s: str) -> date:
+    m = re.fullmatch(r"(\d+) weeks? after (.+)", s)
+
+    if not m:
+        raise ValueError(s)
+
+    base = _parse_date(m.group(2))
+
+    if base is None:
+        raise ValueError(s)
+
+    return base + timedelta(weeks=int(m.group(1)))
+
+
+def _parse_weeks_before(s: str) -> date:
+    m = re.fullmatch(r"(\d+) weeks? before (.+)", s)
+
+    if not m:
+        raise ValueError(s)
+
+    base = _parse_date(m.group(2))
+
+    if base is None:
+        raise ValueError(s)
+
+    return base - timedelta(weeks=int(m.group(1)))
 
 
 # =========================
