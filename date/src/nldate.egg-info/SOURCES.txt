@@ -1,6 +1,7 @@
 README.md
 pyproject.toml
 src/nldate/__init__.py
+src/nldate/nldate.py
 src/nldate/py.typed
 src/nldate.egg-info/PKG-INFO
 src/nldate.egg-info/SOURCES.txt
