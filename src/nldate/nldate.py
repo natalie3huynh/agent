@@ -9,6 +9,7 @@ import re
 # PUBLIC API
 # =========================
 
+
 def parse(s: str, today: Optional[date] = None) -> date:
     if today is None:
         today = date.today()
@@ -85,6 +86,7 @@ def parse(s: str, today: Optional[date] = None) -> date:
 # MULTI-UNIT PARSING (FIX)
 # =========================
 
+
 def _parse_multi(s: str, today: date, direction: int) -> date:
     """
     Handles:
@@ -151,6 +153,7 @@ def _apply_multi(expr: str, base: date, sign: int) -> date:
 # RELATIVE
 # =========================
 
+
 def _parse_in(s: str, today: date) -> date:
     if m := re.fullmatch(r"in (\d+) days?", s):
         return today + timedelta(days=int(m.group(1)))
@@ -179,6 +182,7 @@ def _parse_ago(s: str, today: date) -> date:
 # WEEKDAY LOGIC
 # =========================
 
+
 def _parse_next(s: str, today: date) -> date:
     return _weekday_offset(s[5:], today, True)
 
@@ -191,7 +195,9 @@ def _parse_this(s: str, today: date) -> date:
     return _weekday_offset(s[5:], today, True, allow_same=True)
 
 
-def _weekday_offset(day: str, today: date, forward: bool, allow_same: bool = False) -> date:
+def _weekday_offset(
+    day: str, today: date, forward: bool, allow_same: bool = False
+) -> date:
     target = _weekday(day)
     if target is None:
         raise ValueError(f"Unknown weekday: {day}")
@@ -212,6 +218,7 @@ def _weekday_offset(day: str, today: date, forward: bool, allow_same: bool = Fal
 # =========================
 # ABSOLUTE DATES
 # =========================
+
 
 def _parse_date(s: str) -> Optional[date]:
     s = _normalize_ordinals(s)
@@ -238,6 +245,7 @@ def _parse_date(s: str) -> Optional[date]:
 # HELPERS
 # =========================
 
+
 def _normalize_ordinals(s: str) -> str:
     return re.sub(r"(\d+)(st|nd|rd|th)", r"\1", s)
 
@@ -245,18 +253,29 @@ def _normalize_ordinals(s: str) -> str:
 def _month_to_int(name: str) -> Optional[int]:
     name = name.rstrip(".")
     return {
-        "jan": 1, "january": 1,
-        "feb": 2, "february": 2,
-        "mar": 3, "march": 3,
-        "apr": 4, "april": 4,
+        "jan": 1,
+        "january": 1,
+        "feb": 2,
+        "february": 2,
+        "mar": 3,
+        "march": 3,
+        "apr": 4,
+        "april": 4,
         "may": 5,
-        "jun": 6, "june": 6,
-        "jul": 7, "july": 7,
-        "aug": 8, "august": 8,
-        "sep": 9, "september": 9,
-        "oct": 10, "october": 10,
-        "nov": 11, "november": 11,
-        "dec": 12, "december": 12,
+        "jun": 6,
+        "june": 6,
+        "jul": 7,
+        "july": 7,
+        "aug": 8,
+        "august": 8,
+        "sep": 9,
+        "september": 9,
+        "oct": 10,
+        "october": 10,
+        "nov": 11,
+        "november": 11,
+        "dec": 12,
+        "december": 12,
     }.get(name)
 
 
