@@ -9,6 +9,7 @@ import re
 # PUBLIC FUNCTION
 # =========================
 
+
 def parse(s: str, today: Optional[date] = None) -> date:
     if today is None:
         today = date.today()
@@ -76,6 +77,7 @@ def parse(s: str, today: Optional[date] = None) -> date:
 # NORMALIZATION
 # =========================
 
+
 def _normalize_ordinals(s: str) -> str:
     return re.sub(r"(\d+)(st|nd|rd|th)", r"\1", s)
 
@@ -83,6 +85,7 @@ def _normalize_ordinals(s: str) -> str:
 # =========================
 # RELATIVE
 # =========================
+
 
 def _parse_in(s: str, today: date) -> date:
     if m := re.fullmatch(r"in (\d+) days?", s):
@@ -112,6 +115,7 @@ def _parse_ago(s: str, today: date) -> date:
 # WEEKDAYS
 # =========================
 
+
 def _parse_next(s: str, today: date) -> date:
     return _weekday_offset(s[5:], today, True)
 
@@ -124,7 +128,9 @@ def _parse_this(s: str, today: date) -> date:
     return _weekday_offset(s[5:], today, True, allow_same=True)
 
 
-def _weekday_offset(day_name: str, today: date, forward: bool, allow_same: bool = False) -> date:
+def _weekday_offset(
+    day_name: str, today: date, forward: bool, allow_same: bool = False
+) -> date:
     target = _weekday(day_name)
     if target is None:
         raise ValueError(f"Unknown weekday: {day_name}")
@@ -145,6 +151,7 @@ def _weekday_offset(day_name: str, today: date, forward: bool, allow_same: bool 
 # =========================
 # MULTI-UNIT PARSER (NEW CORE FIX)
 # =========================
+
 
 def _parse_multi(s: str, today: date, direction: int) -> date:
     """
@@ -203,6 +210,7 @@ def _apply_multi_delta(base: date, delta: str, sign: int) -> date:
 # SIMPLE BEFORE/AFTER (kept for compatibility)
 # =========================
 
+
 def _parse_days_from(s: str) -> date:
     m = re.fullmatch(r"(\d+) days? from (.+)", s)
     if not m:
@@ -226,6 +234,7 @@ def _parse_years_from(s: str) -> date:
 # =========================
 # ABSOLUTE DATE PARSER
 # =========================
+
 
 def _parse_date(s: str) -> Optional[date]:
     s = _normalize_ordinals(s)
@@ -252,21 +261,33 @@ def _parse_date(s: str) -> Optional[date]:
 # HELPERS
 # =========================
 
+
 def _month_to_int(name: str) -> Optional[int]:
     name = name.rstrip(".")
     return {
-        "january": 1, "jan": 1,
-        "february": 2, "feb": 2,
-        "march": 3, "mar": 3,
-        "april": 4, "apr": 4,
+        "january": 1,
+        "jan": 1,
+        "february": 2,
+        "feb": 2,
+        "march": 3,
+        "mar": 3,
+        "april": 4,
+        "apr": 4,
         "may": 5,
-        "june": 6, "jun": 6,
-        "july": 7, "jul": 7,
-        "august": 8, "aug": 8,
-        "september": 9, "sep": 9,
-        "october": 10, "oct": 10,
-        "november": 11, "nov": 11,
-        "december": 12, "dec": 12,
+        "june": 6,
+        "jun": 6,
+        "july": 7,
+        "jul": 7,
+        "august": 8,
+        "aug": 8,
+        "september": 9,
+        "sep": 9,
+        "october": 10,
+        "oct": 10,
+        "november": 11,
+        "nov": 11,
+        "december": 12,
+        "dec": 12,
     }.get(name)
 
 
