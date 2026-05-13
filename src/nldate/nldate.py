@@ -69,6 +69,9 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if " days from " in s or " day from " in s:
         return _parse_days_from(s)
 
+    if " days after " in s or " day after " in s:
+        return _parse_days_after(s)
+
     if " years before " in s or " year before " in s:
         return _parse_years_before(s)
 
@@ -203,6 +206,20 @@ def _parse_days_before(s: str) -> date:
 
 def _parse_days_from(s: str) -> date:
     m = re.fullmatch(r"(\d+) days? from (.+)", s)
+
+    if not m:
+        raise ValueError(s)
+
+    base = _parse_date(m.group(2))
+
+    if base is None:
+        raise ValueError(s)
+
+    return base + timedelta(days=int(m.group(1)))
+
+
+def _parse_days_after(s: str) -> date:
+    m = re.fullmatch(r"(\d+) days? after (.+)", s)
 
     if not m:
         raise ValueError(s)
