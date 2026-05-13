@@ -72,17 +72,23 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if " days after " in s or " day after " in s:
         return _parse_days_after(s)
 
-    if " years before " in s or " year before " in s:
-        return _parse_years_before(s)
-
-    if " years from " in s or " year from " in s:
-        return _parse_years_from(s)
-
     if " weeks after " in s or " week after " in s:
         return _parse_weeks_after(s)
 
     if " weeks before " in s or " week before " in s:
         return _parse_weeks_before(s)
+
+    if " months before " in s or " month before " in s:
+        return _parse_months_before(s)
+
+    if " months after " in s or " month after " in s:
+        return _parse_months_after(s)
+
+    if " years before " in s or " year before " in s:
+        return _parse_years_before(s)
+
+    if " years from " in s or " year from " in s:
+        return _parse_years_from(s)
 
     # -----------------------
     # absolute date formats
@@ -232,34 +238,6 @@ def _parse_days_after(s: str) -> date:
     return base + timedelta(days=int(m.group(1)))
 
 
-def _parse_years_before(s: str) -> date:
-    m = re.fullmatch(r"(\d+) years? before (.+)", s)
-
-    if not m:
-        raise ValueError(s)
-
-    base = _parse_date(m.group(2))
-
-    if base is None:
-        raise ValueError(s)
-
-    return _add_years(base, -int(m.group(1)))
-
-
-def _parse_years_from(s: str) -> date:
-    m = re.fullmatch(r"(\d+) years? from (.+)", s)
-
-    if not m:
-        raise ValueError(s)
-
-    base = _parse_date(m.group(2))
-
-    if base is None:
-        raise ValueError(s)
-
-    return _add_years(base, int(m.group(1)))
-
-
 def _parse_weeks_after(s: str) -> date:
     m = re.fullmatch(r"(\d+) weeks? after (.+)", s)
 
@@ -286,6 +264,62 @@ def _parse_weeks_before(s: str) -> date:
         raise ValueError(s)
 
     return base - timedelta(weeks=int(m.group(1)))
+
+
+def _parse_months_before(s: str) -> date:
+    m = re.fullmatch(r"(\d+) months? before (.+)", s)
+
+    if not m:
+        raise ValueError(s)
+
+    base = _parse_date(m.group(2))
+
+    if base is None:
+        raise ValueError(s)
+
+    return _add_months(base, -int(m.group(1)))
+
+
+def _parse_months_after(s: str) -> date:
+    m = re.fullmatch(r"(\d+) months? after (.+)", s)
+
+    if not m:
+        raise ValueError(s)
+
+    base = _parse_date(m.group(2))
+
+    if base is None:
+        raise ValueError(s)
+
+    return _add_months(base, int(m.group(1)))
+
+
+def _parse_years_before(s: str) -> date:
+    m = re.fullmatch(r"(\d+) years? before (.+)", s)
+
+    if not m:
+        raise ValueError(s)
+
+    base = _parse_date(m.group(2))
+
+    if base is None:
+        raise ValueError(s)
+
+    return _add_years(base, -int(m.group(1)))
+
+
+def _parse_years_from(s: str) -> date:
+    m = re.fullmatch(r"(\d+) years? from (.+)", s)
+
+    if not m:
+        raise ValueError(s)
+
+    base = _parse_date(m.group(2))
+
+    if base is None:
+        raise ValueError(s)
+
+    return _add_years(base, int(m.group(1)))
 
 
 # =========================
