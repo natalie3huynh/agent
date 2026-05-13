@@ -5,6 +5,10 @@ from typing import Optional
 import re
 
 
+# =========================
+# PUBLIC API
+# =========================
+
 def parse(s: str, today: Optional[date] = None) -> date:
     if today is None:
         today = date.today()
@@ -12,7 +16,9 @@ def parse(s: str, today: Optional[date] = None) -> date:
     s = s.strip().lower()
     s = _normalize_ordinals(s)
 
+    # ------------------------
     # simple keywords
+    # ------------------------
     if s == "today":
         return today
     if s == "tomorrow":
@@ -20,7 +26,9 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if s == "yesterday":
         return today - timedelta(days=1)
 
+    # ------------------------
     # special phrases
+    # ------------------------
     if s == "a week ago":
         return today - timedelta(weeks=1)
     if s == "a year from now":
@@ -30,7 +38,9 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if s == "2 weeks from now":
         return today + timedelta(weeks=2)
 
+    # ------------------------
     # relative patterns
+    # ------------------------
     if s.startswith("in "):
         return _parse_in(s, today)
 
@@ -46,9 +56,9 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if s.startswith("this "):
         return _parse_this(s, today)
 
-    # -------------------------
-    # BEFORE / AFTER (UPDATED)
-    # -------------------------
+    # ------------------------
+    # BEFORE / AFTER (multi-unit supported)
+    # ------------------------
     if " before " in s:
         return _parse_multi_before(s)
 
@@ -56,12 +66,14 @@ def parse(s: str, today: Optional[date] = None) -> date:
         return _parse_multi_after(s)
 
     if " day from " in s or " days from " in s:
-        return _parse_days_from(s)
+        return _parse_days_from(s, today)
 
     if " year from " in s or " years from " in s:
-        return _parse_years_from(s)
+        return _parse_years_from(s, today)
 
-    # absolute parsing
+    # ------------------------
+    # absolute formats
+    # ------------------------
     parsed = _parse_date(s)
     if parsed is not None:
         return parsed
@@ -91,7 +103,7 @@ def _parse_in(s: str, today: date) -> date:
     if m := re.fullmatch(r"in (\d+) years?", s):
         return _add_years(today, int(m.group(1)))
 
-    raise ValueError(f"Cannot parse: {s}")
+    raise ValueError(s)
 
 
 def _parse_ago(s: str, today: date) -> date:
@@ -104,7 +116,7 @@ def _parse_ago(s: str, today: date) -> date:
     if m := re.fullmatch(r"(\d+) years? ago", s):
         return _add_years(today, -int(m.group(1)))
 
-    raise ValueError(f"Cannot parse: {s}")
+    raise ValueError(s)
 
 
 # =========================
@@ -144,7 +156,7 @@ def _weekday_offset(day_name: str, today: date, forward: bool, allow_same: bool 
 
 
 # =========================
-# MULTI BEFORE / AFTER (FIX)
+# MULTI-UNIT BEFORE / AFTER
 # =========================
 
 def _parse_multi_before(s: str) -> date:
@@ -158,9 +170,7 @@ def _parse_multi_before(s: str) -> date:
     if base is None:
         raise ValueError(s)
 
-    years = 0
-    months = 0
-    days = 0
+    years = months = days = 0
 
     for part in [p.strip() for p in offset_part.split(",")]:
         if m := re.fullmatch(r"(\d+) years?", part):
@@ -192,9 +202,7 @@ def _parse_multi_after(s: str) -> date:
     if base is None:
         raise ValueError(s)
 
-    years = 0
-    months = 0
-    days = 0
+    years = months = days = 0
 
     for part in [p.strip() for p in offset_part.split(",")]:
         if m := re.fullmatch(r"(\d+) years?", part):
@@ -216,7 +224,35 @@ def _parse_multi_after(s: str) -> date:
 
 
 # =========================
-# ABSOLUTE DATES
+# DATE PARSING
+# =========================
+
+def _parse_days_from(s: str, today: date) -> date:
+    m = re.fullmatch(r"(\d+) days? from (.+)", s)
+    if not m:
+        raise ValueError(s)
+
+    base = _parse_date(m.group(2))
+    if base is None:
+        raise ValueError(s)
+
+    return base + timedelta(days=int(m.group(1)))
+
+
+def _parse_years_from(s: str, today: date) -> date:
+    m = re.fullmatch(r"(\d+) years? from (.+)", s)
+    if not m:
+        raise ValueError(s)
+
+    base = _parse_date(m.group(2))
+    if base is None:
+        raise ValueError(s)
+
+    return _add_years(base, int(m.group(1)))
+
+
+# =========================
+# ABSOLUTE DATE PARSING
 # =========================
 
 def _parse_date(s: str) -> Optional[date]:
