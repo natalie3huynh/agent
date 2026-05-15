@@ -19,8 +19,14 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if s == "tomorrow":
         return today + timedelta(days=1)
 
+    if s == "the day after tomorrow":
+        return today + timedelta(days=2)
+
     if s == "yesterday":
         return today - timedelta(days=1)
+
+    if s == "the day before yesterday":
+        return today - timedelta(days=2)
 
     # special natural phrases
     if s == "a week ago":
@@ -108,8 +114,14 @@ def _parse_base_date(s: str, today: date) -> Optional[date]:
     if s == "tomorrow":
         return today + timedelta(days=1)
 
+    if s == "the day after tomorrow":
+        return today + timedelta(days=2)
+
     if s == "yesterday":
         return today - timedelta(days=1)
+
+    if s == "the day before yesterday":
+        return today - timedelta(days=2)
 
     return _parse_date(s)
 
